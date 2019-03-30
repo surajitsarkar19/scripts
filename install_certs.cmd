@@ -40,7 +40,7 @@ if '%ERRORLEVEL%'=='2' (
 set /p store_pass="Enter store password[Press enter for default password] :"
 set /p cert_path="Enter certificate path[Default current directory] :"
 
-IF '%cert_path%'=='' (
+IF "%cert_path%"=="" (
 	set cert_path=%~dp0
 )
 
@@ -49,6 +49,8 @@ if "%cert_path:~-1%"=="\" (
 	echo Found /
 	set cert_path=%cert_path:~0,-1%
 )
+
+CALL :DeQuote cert_path
 
 echo Using following store configuration:--------------------------
 echo Store path: %store_path%
@@ -68,7 +70,7 @@ if %keytool%=="" (
 
 echo Using %keytool% for certificate installation
 
-dir /b /s %cert_path%\*.cer* > list
+dir /b /s "%cert_path%\*.cer*" > list
 FOR /f "tokens=*" %%G IN (list) DO (
 	echo -----------------------------Installing certificate %%~nG ----------------------------------
 	Rem %keytool% -import -trustcacerts -keystore %store_path% -storepass %store_pass% -noprompt -alias %%~nG -file "%%G"
@@ -96,10 +98,17 @@ FOR /f "tokens=*" %%G IN (list) DO (
 
 goto :End
 
+:DeQuote
+for /f "delims=" %%A in ('echo %%%1%%') do set %1=%%~A
+goto :EOF
+
 :InstallCertificate
+Rem 2nd argument is already coming with qoute("") if there is any space in path segment
+:: %1 is full argument
+:: %~1 is argument without quote
 echo Alias: %1
 echo Path : %2
-%keytool% -import -trustcacerts -keystore %store_path% -storepass %store_pass% -noprompt -alias "%1" -file "%2"
+%keytool% -import -trustcacerts -keystore %store_path% -storepass %store_pass% -noprompt -alias "%~1" -file "%~2"
 goto :EOF
 
 :MoveCertificate
@@ -108,10 +117,10 @@ for %%x in (%*) do (
    set /A argCount+=1
 )
 if %argCount% LSS 2 (
-	move /y "%1" "%installed_path%" > nul
+	move /y %1 %installed_path% > nul
 	call :ECHOGREEN "Certificate installed successfully..........."
 ) else (
-	move /y "%1" "%error_path%" > nul
+	move /y %1 %error_path% > nul
 	call :ECHORED "Certificate install error............."
 )
 goto :EOF
